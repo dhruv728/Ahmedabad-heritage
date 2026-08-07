@@ -1,0 +1,6 @@
+import React from 'react';
+import AdminDashboardPage from '../../app/admin/page';
+
+export default function VerificationsPanel() {
+  return <AdminDashboardPage />;
+}
