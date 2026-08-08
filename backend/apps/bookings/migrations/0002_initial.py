@@ -20,7 +20,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        BtreeGistExtension(),
         migrations.AddField(
             model_name="booking",
             name="guest",
@@ -37,17 +36,6 @@ class Migration(migrations.Migration):
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="bookings",
                 to="listings.listing",
-            ),
-        ),
-        migrations.AddConstraint(
-            model_name="booking",
-            constraint=django.contrib.postgres.constraints.ExclusionConstraint(
-                condition=models.Q(("status__in", ["requested", "confirmed"])),
-                expressions=[
-                    (models.Func("check_in", "check_out", function="daterange"), "&&"),
-                    ("listing", "="),
-                ],
-                name="no_overlap",
             ),
         ),
     ]

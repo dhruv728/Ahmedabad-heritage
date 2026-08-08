@@ -31,7 +31,8 @@ class ListingSerializer(serializers.ModelSerializer):
             'id', 'host', 'pol', 'pol_name', 'title', 'description',
             'heritage_story', 'address_line', 'latitude', 'longitude',
             'price_per_night', 'max_guests', 'room_type', 'amenities',
-            'heritage_verified', 'status', 'photos', 'availabilities',
+            'heritage_verified', 'property_document_url', 'property_document_type',
+            'status', 'photos', 'availabilities',
             'rating', 'review_count',
             'created_at', 'updated_at'
         )
@@ -39,12 +40,12 @@ class ListingSerializer(serializers.ModelSerializer):
     def get_rating(self, obj):
         from apps.reviews.models import Review
         from django.db.models import Avg
-        avg = Review.objects.filter(booking__listing=obj, is_visible=True).aggregate(Avg('rating'))['rating__avg']
+        avg = Review.objects.filter(booking__listing=obj, is_visible=True).aggregate(Avg('rating'))['rating__avg']  # type: ignore
         return round(float(avg), 1) if avg is not None else 4.9
 
     def get_review_count(self, obj):
         from apps.reviews.models import Review
-        return Review.objects.filter(booking__listing=obj, is_visible=True).count()
+        return Review.objects.filter(booking__listing=obj, is_visible=True).count()  # type: ignore
 
 class ListingCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,7 +53,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
         fields = (
             'pol', 'pol_name', 'title', 'description', 'heritage_story',
             'address_line', 'latitude', 'longitude', 'price_per_night',
-            'max_guests', 'room_type', 'amenities'
+            'max_guests', 'room_type', 'amenities', 'property_document_url', 'property_document_type'
         )
 
     def create(self, validated_data):

@@ -16,6 +16,8 @@ class User(AbstractUser):
     preferred_language = models.CharField(max_length=10, default='en')
     is_phone_verified = models.BooleanField(default=False)
     is_id_verified = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
+    id_document_url = models.CharField(max_length=500, null=True, blank=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.TRAVELER)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -24,7 +26,7 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if not self.email:
-            self.email = None
+            self.email = None  # type: ignore
         super().save(*args, **kwargs)
 
     def __str__(self):

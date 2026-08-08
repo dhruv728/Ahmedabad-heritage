@@ -10,6 +10,8 @@ export interface UserProfile {
   full_name: string;
   role: 'TRAVELER' | 'HOST' | 'ADMIN';
   is_id_verified?: boolean;
+  is_verified?: boolean;
+  id_document_url?: string;
 }
 
 interface AuthContextType {
@@ -22,7 +24,7 @@ interface AuthContextType {
   setUser: (user: UserProfile | null) => void;
   setAccessToken: (token: string | null) => void;
   login: (credentials: { email?: string; password?: string }) => Promise<boolean>;
-  register: (data: { email: string; full_name: string; phone?: string; role: string; password?: string }) => Promise<boolean>;
+  register: (data: { email: string; full_name: string; phone?: string; role: string; password?: string; id_document_url?: string }) => Promise<boolean>;
   logout: () => void;
   getRedirectPathForRole: (role: string) => string;
 }
@@ -93,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone: data.user?.phone || '',
       full_name: data.user?.full_name || 'User',
       role: userRole as any,
-      is_id_verified: true,
+      is_id_verified: data.user?.is_id_verified ?? (userRole !== 'HOST'),
+      is_verified: data.user?.is_verified ?? (userRole !== 'HOST'),
+      id_document_url: data.user?.id_document_url || '',
     };
 
     setAccessToken(token);
@@ -109,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
-  const register = async (data: { email: string; full_name: string; phone?: string; role: string; password?: string }): Promise<boolean> => {
+  const register = async (data: { email: string; full_name: string; phone?: string; role: string; password?: string; id_document_url?: string }): Promise<boolean> => {
     const res = await fetch('/api/v1/auth/register/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: data.phone || '',
         role: data.role.toLowerCase(),
         password: data.password,
+        id_document_url: data.id_document_url || '',
       }),
     });
 

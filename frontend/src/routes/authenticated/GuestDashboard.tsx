@@ -181,28 +181,23 @@ export default function GuestDashboard() {
     fetchMyBookings();
   }, [user?.id]);
 
-  // Requirement 1: Fetch active listings from GET /api/v1/listings/
+  // Requirement 1: Dynamic Traveler Listing View from GET http://127.0.0.1:8000/api/v1/listings/?status=APPROVED
   const fetchActiveListings = async () => {
     setLoadingListings(true);
     try {
       const params = new URLSearchParams();
+      params.append('status', 'APPROVED');
       if (selectedPol !== 'All') params.append('pol_name', selectedPol);
       if (guestCount) params.append('max_guests', guestCount);
 
-      const res = await fetch(`/api/v1/listings/?${params.toString()}`);
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/listings/?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const results = Array.isArray(data) ? data : data.results || [];
-        if (results.length > 0) {
-          setListings(results);
-        } else {
-          setListings(defaultListings);
-        }
-      } else {
-        setListings(defaultListings);
+        setListings(results);
       }
     } catch {
-      setListings(defaultListings);
+      console.warn('Failed to fetch live listings');
     } finally {
       setLoadingListings(false);
     }

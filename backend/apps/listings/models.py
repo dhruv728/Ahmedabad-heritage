@@ -12,8 +12,8 @@ class PolSector(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return str(self.name)
 
 class Listing(models.Model):
     class RoomType(models.TextChoices):
@@ -44,6 +44,8 @@ class Listing(models.Model):
     room_type = models.CharField(max_length=50, choices=RoomType.choices, default=RoomType.PRIVATE_ROOM)
     amenities = models.JSONField(default=dict, blank=True)
     heritage_verified = models.BooleanField(default=False)
+    property_document_url = models.CharField(max_length=500, null=True, blank=True)
+    property_document_type = models.CharField(max_length=100, default='Rental Agreement / Tax Receipt')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

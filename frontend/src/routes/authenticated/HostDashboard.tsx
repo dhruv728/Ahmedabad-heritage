@@ -124,6 +124,87 @@ export default function HostDashboard() {
     fetchHostData();
   }, [user?.id]);
 
+  // Requirement 1: Restricted Access check for unverified Hosts
+  const isUnverifiedHost = user?.role === 'HOST' && !user?.is_verified;
+
+  if (isUnverifiedHost) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] text-stone-800 font-sans selection:bg-[#B84A22] selection:text-white">
+        <header className="sticky top-0 z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-stone-200/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold font-serif tracking-tight text-[#1E5A5B]">
+                Amdavad Heritage
+              </span>
+            </Link>
+
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-300">
+                Pending Admin Review
+              </span>
+              <button onClick={logout} className="text-xs font-bold text-stone-600 hover:text-[#B84A22] flex items-center gap-1.5 bg-white border border-stone-200 px-3 py-1.5 rounded-full shadow-sm">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-3xl mx-auto px-4 py-16 text-center space-y-8">
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-stone-200/80 shadow-xl space-y-6">
+            <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-sm">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-3 max-w-lg mx-auto">
+              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
+                Account Review in Progress
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                Host Verification Required
+              </h1>
+              <p className="text-sm text-stone-600 leading-relaxed font-medium">
+                Your Host account is under review by Admin. You will gain portal access once verified.
+              </p>
+            </div>
+
+            <div className="bg-stone-50 rounded-2xl p-6 border border-stone-200 text-left space-y-3 max-w-md mx-auto text-xs">
+              <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                <span className="text-stone-500 font-semibold">Applicant Name:</span>
+                <span className="font-bold text-stone-800">{user?.full_name || 'Host Applicant'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                <span className="text-stone-500 font-semibold">Email:</span>
+                <span className="font-bold text-stone-800">{user?.email}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                <span className="text-stone-500 font-semibold">Submitted ID Document:</span>
+                <span className="font-mono text-[#1E5A5B] font-semibold truncate max-w-[200px]">
+                  {user?.id_document_url || 'Aadhaar_Govt_ID_Verification.pdf'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-stone-500 font-semibold">Current Status:</span>
+                <span className="font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                  PENDING_VERIFICATION
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                onClick={logout}
+                className="w-full sm:w-auto px-8 py-3 rounded-full bg-[#1E5A5B] hover:bg-[#154142] text-white text-xs font-semibold shadow-md transition hover:scale-105"
+              >
+                Return & Sign Out
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Requirement 2: Handle Accept / Decline / Check-In / Check-Out Actions
   const handleBookingAction = async (id: string, action: 'CONFIRMED' | 'REJECTED' | 'CHECK_IN' | 'CHECK_OUT') => {
     try {

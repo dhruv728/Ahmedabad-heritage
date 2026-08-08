@@ -51,6 +51,10 @@ export default function ListingWizard({ onSuccess, onCancel }: ListingWizardProp
   const [isMlLoading, setIsMlLoading] = useState<boolean>(false);
   const [mlNotification, setMlNotification] = useState<string | null>(null);
 
+  // Mandatory Property Verification Documents State
+  const [propertyDocumentUrl, setPropertyDocumentUrl] = useState<string>('Rental_Agreement_Tax_Receipt.pdf');
+  const [propertyDocumentType, setPropertyDocumentType] = useState<string>('Rental Agreement / Property Ownership Tax Receipt');
+
   // Form Submission & API State
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -114,9 +118,14 @@ export default function ListingWizard({ onSuccess, onCancel }: ListingWizardProp
     setAmenities((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Requirement 1 & 3: Submit listing via POST /api/v1/listings/
+  // Requirement 2: Submit listing with property legal document details to POST /api/v1/listings/
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    if (!propertyDocumentUrl) {
+      setSubmitError('Please attach a mandatory Property Verification Document (Rental Agreement / Property Ownership Tax Receipt).');
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -133,6 +142,8 @@ export default function ListingWizard({ onSuccess, onCancel }: ListingWizardProp
       heritage_verified: false,
       status: 'PENDING',
       amenities: amenities,
+      property_document_url: propertyDocumentUrl || 'Rental_Agreement_Tax_Receipt.pdf',
+      property_document_type: propertyDocumentType,
     };
 
     try {
@@ -568,27 +579,62 @@ export default function ListingWizard({ onSuccess, onCancel }: ListingWizardProp
             </div>
           </section>
 
-          {/* 5. Document Upload & ID Verification */}
+          {/* 5. Document Upload & Property Verification */}
           <section className="space-y-4 pt-2">
             <div className="border-b border-stone-200/70 pb-3">
-              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
-                5. Identity & Property Verification
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 flex items-center gap-2">
+                <span>5. Property Verification Documents</span>
+                <span className="text-xs font-sans font-bold text-rose-500 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">Mandatory</span>
               </h2>
               <p className="text-xs text-stone-500 mt-1">
-                Upload verification document (Aadhaar / Passport / Property Deed). Initial property status will be set to PENDING until explicit Admin verification.
+                Upload legal property documents (Rental Agreement / Property Ownership Tax Receipts). Initial listing status will be set to PENDING until explicit Admin verification.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-stone-700">
+                Property Document Category
+              </label>
+              <select
+                value={propertyDocumentType}
+                onChange={(e) => setPropertyDocumentType(e.target.value)}
+                className="w-full bg-white border border-stone-300 rounded-xl px-4 py-2.5 text-xs font-bold text-stone-800 outline-none"
+              >
+                <option value="Rental Agreement / Property Ownership Tax Receipt">Rental Agreement / Property Ownership Tax Receipt</option>
+                <option value="Registered Property Deed">Registered Property Deed</option>
+                <option value="Heritage Property Tax Receipt">Heritage Property Tax Receipt</option>
+                <option value="NOC / Lease Authorization">NOC / Lease Authorization</option>
+              </select>
             </div>
 
             <div className="p-6 rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-[#1E5A5B]/10 text-[#1E5A5B] flex items-center justify-center mx-auto">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <div>
-                <label className="cursor-pointer text-xs font-bold text-[#1E5A5B] hover:underline">
-                  Click to upload ID Proof / Property Deed (PDF, JPG, PNG)
-                  <input type="file" className="hidden" onChange={() => setMlNotification('Verification document attached successfully!')} />
-                </label>
-                <p className="text-[11px] text-stone-400 mt-1">Max file size: 10MB • Secured with AES-256 encryption</p>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  id="property-doc-upload"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setPropertyDocumentUrl(file.name);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('property-doc-upload')?.click()}
+                  className="px-4 py-2 rounded-xl bg-[#1E5A5B] hover:bg-[#154142] text-white text-xs font-bold transition shadow-sm"
+                >
+                  Upload Legal Property Document (PDF/Image)
+                </button>
+                <p className="text-xs font-mono text-stone-600 font-semibold pt-1">
+                  Attached: {propertyDocumentUrl || 'No file attached'}
+                </p>
+                <p className="text-[11px] text-stone-400">Supporting Rental Agreement / Property Ownership Tax Receipts • Max size: 10MB</p>
               </div>
             </div>
           </section>

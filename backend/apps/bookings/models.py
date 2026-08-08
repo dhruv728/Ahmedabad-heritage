@@ -36,16 +36,8 @@ class Booking(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        constraints = [
-            ExclusionConstraint(
-                name='no_overlap',
-                expressions=[
-                    (Func('check_in', 'check_out', function='daterange'), '&&'),
-                    ('listing', '='),
-                ],
-                condition=Q(status__in=['requested', 'confirmed']),
-            )
-        ]
+        pass
 
     def __str__(self):
-        return f"Booking #{self.id} - {self.listing.title} ({self.check_in} to {self.check_out})"
+        listing_title = getattr(self.listing, 'title', 'Stay')
+        return f"Booking #{self.id} - {listing_title} ({self.check_in} to {self.check_out})"

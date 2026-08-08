@@ -31,6 +31,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
   const [phone, setPhone] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [role, setRole] = useState<'TRAVELER' | 'HOST'>('TRAVELER');
+  const [idDocumentUrl, setIdDocumentUrl] = useState<string>('Aadhaar_Govt_ID_Verification.pdf');
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +74,12 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         return;
       }
 
+      if (role === 'HOST' && !idDocumentUrl) {
+        setError('Please upload or attach your Govt ID / Aadhaar verification document.');
+        setLoading(false);
+        return;
+      }
+
       try {
         // Requirement 1: POST http://127.0.0.1:8000/api/v1/auth/register/
         const res = await axios.post(`${API_BASE_URL}/api/v1/auth/register/`, {
@@ -81,10 +88,11 @@ export default function AuthModal({ onClose }: AuthModalProps) {
           phone: cleanPhone,
           password: cleanPassword,
           role: role.toLowerCase(),
+          id_document_url: role === 'HOST' ? (idDocumentUrl || 'Aadhaar_Govt_ID_Verification.pdf') : '',
         });
 
         if (res.status === 201 || res.status === 200) {
-          setSuccessMessage('Registration successful! Please sign in with your email and password.');
+          setSuccessMessage('Registration successful! Your host account is pending Admin Verification.');
           setTimeout(() => {
             setActiveTab('login');
             setSuccessMessage(null);
@@ -130,6 +138,9 @@ export default function AuthModal({ onClose }: AuthModalProps) {
             phone: userObj.phone || '',
             full_name: userObj.full_name || userObj.email,
             role: userRole,
+            is_verified: userObj.is_verified ?? (userRole !== 'HOST'),
+            is_id_verified: userObj.is_id_verified ?? (userRole !== 'HOST'),
+            id_document_url: userObj.id_document_url || '',
           };
 
           localStorage.setItem('user_profile', JSON.stringify(formattedUser));
@@ -297,7 +308,42 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                 </div>
               </div>
 
-              {/* Input 4: Password */}
+              {/* Input 4: Identity Document Upload for Host */}
+              {role === 'HOST' && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] uppercase font-bold text-stone-500">
+                    GOVT ID / AADHAAR VERIFICATION DOCUMENT <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="host-id-doc-upload"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIdDocumentUrl(file.name);
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2 bg-stone-50 border border-stone-300 rounded-xl p-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('host-id-doc-upload')?.click()}
+                        className="px-3 py-1.5 rounded-lg bg-[#B84A22] text-white font-semibold text-[11px] hover:bg-[#A03E1C] transition shrink-0"
+                      >
+                        Upload ID File
+                      </button>
+                      <span className="text-stone-600 truncate font-mono text-[11px]">
+                        {idDocumentUrl || 'No file selected (Govt ID / Aadhaar required)'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Input 5: Password */}
               <div className="space-y-1">
                 <label className="block text-[11px] uppercase font-bold text-stone-500">PASSWORD</label>
                 <div className="relative">

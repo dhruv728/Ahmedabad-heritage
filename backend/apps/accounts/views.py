@@ -32,6 +32,9 @@ class RegisterView(APIView):
                     "phone": user.phone or '',
                     "role": role_str,
                     "username": user.username,
+                    "is_verified": user.is_verified,
+                    "is_id_verified": user.is_id_verified,
+                    "id_document_url": user.id_document_url or '',
                 },
                 "tokens": {
                     "refresh": str(refresh),
@@ -69,6 +72,9 @@ class LoginView(APIView):
                     "phone": user.phone or '',
                     "role": role_str,
                     "username": user.username,
+                    "is_verified": user.is_verified,
+                    "is_id_verified": user.is_id_verified,
+                    "id_document_url": user.id_document_url or '',
                 },
                 "tokens": {
                     "refresh": str(refresh),
@@ -91,6 +97,9 @@ class CurrentUserView(APIView):
             "role": role_str,
             "username": user.username,
             "is_staff": user.is_staff,
+            "is_verified": user.is_verified,
+            "is_id_verified": user.is_id_verified,
+            "id_document_url": user.id_document_url or '',
         })
 
 class OTPRequestView(APIView):
@@ -128,4 +137,4 @@ class OTPVerifyView(APIView):
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class TokenRefreshView(SimpleJWTTokenRefreshView):
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)

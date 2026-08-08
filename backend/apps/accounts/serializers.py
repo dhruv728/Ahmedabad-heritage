@@ -11,10 +11,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     username = serializers.CharField(required=False, allow_blank=True)
     role = serializers.CharField(default='traveler')
+    id_document_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'phone', 'full_name', 'email', 'password', 'role')
+        fields = ('id', 'username', 'phone', 'full_name', 'email', 'password', 'role', 'id_document_url')
 
     def validate_email(self, value):
         if value and User.objects.filter(email__iexact=value).exists():
@@ -34,6 +35,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         # Normalize role to lowercase
         if 'role' in validated_data:
             validated_data['role'] = validated_data['role'].lower()
+        role = validated_data.get('role', 'traveler')
+        if role == 'host':
+            validated_data['is_verified'] = False
+            validated_data['is_id_verified'] = False
+        else:
+            validated_data['is_verified'] = True
+            validated_data['is_id_verified'] = True
+
         user = User(**validated_data)
         user.set_password(password)
         user.save()
