@@ -55,9 +55,14 @@ interface HostProperty {
 
 export default function HostDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'requests' | 'listings' | 'pricing'>('requests');
+
+  // Re-verification Upload Form State
+  const [reverifyDocUrl, setReverifyDocUrl] = useState<string>('');
+  const [isSubmittingReverify, setIsSubmittingReverify] = useState<boolean>(false);
+  const [reverifySuccess, setReverifySuccess] = useState<boolean>(false);
 
   // Booking Requests Queue State (Starts empty)
   const [bookingRequests, setBookingRequests] = useState<HostBookingRequest[]>([]);
@@ -124,10 +129,176 @@ export default function HostDashboard() {
     fetchHostData();
   }, [user?.id]);
 
+  const handleSubmitReverification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    setIsSubmittingReverify(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      await axios.patch(
+        `http://127.0.0.1:8000/api/v1/users/${user.id}/submit_reverification/`,
+        { id_document_url: reverifyDocUrl || 'Updated_Govt_ID_Reverification.pdf' },
+        { headers }
+      );
+
+      const updatedUser = {
+        ...user,
+        is_verified: false,
+        is_id_verified: false,
+        verification_status: 'PENDING_VERIFICATION',
+        id_document_url: reverifyDocUrl || 'Updated_Govt_ID_Reverification.pdf',
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user_profile', JSON.stringify(updatedUser));
+      setReverifySuccess(true);
+    } catch {
+      console.warn('Failed to submit reverification documents');
+    } finally {
+      setIsSubmittingReverify(false);
+    }
+  };
+
   // Requirement 1: Restricted Access check for unverified Hosts
-  const isUnverifiedHost = user?.role === 'HOST' && !user?.is_verified;
+  const statusStr = (user?.verification_status || (user?.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION')).toUpperCase();
+  const isUnverifiedHost = user?.role === 'HOST' && (!user?.is_id_verified || !user?.is_verified || statusStr !== 'VERIFIED');
 
   if (isUnverifiedHost) {
+    if (statusStr === 'REJECTED') {
+      return (
+        <div className="min-h-screen bg-[#FAF8F5] text-stone-800 font-sans">
+          <header className="sticky top-0 z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-stone-200/60">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+              <Link to="/" className="text-2xl sm:text-3xl font-bold font-serif text-[#1E5A5B]">
+                Amdavad Heritage
+              </Link>
+              <button onClick={logout} className="text-xs font-bold text-stone-600 hover:text-[#B84A22] flex items-center gap-1.5 bg-white border px-3 py-1.5 rounded-full shadow-sm">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </header>
+
+          <main className="max-w-3xl mx-auto px-4 py-16 text-center space-y-8">
+            <div className="bg-white rounded-3xl p-8 sm:p-12 border border-stone-200/80 shadow-xl space-y-6">
+              <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-sm">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-3 max-w-lg mx-auto">
+                <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold uppercase tracking-wider">
+                  VERIFICATION REJECTED
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900">
+                  Account Verification Rejected
+                </h1>
+                <p className="text-sm text-stone-600 leading-relaxed font-medium">
+                  Your Host account verification was reviewed and declined by Admin. Access to the Host Portal has been revoked. Please contact support if you believe this was an error.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={logout}
+                  className="px-8 py-3 rounded-full bg-[#B84A22] hover:bg-[#A03E1C] text-white text-xs font-semibold shadow-md transition hover:scale-105"
+                >
+                  Return & Sign Out
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    if (statusStr === 'REVERIFICATION_REQUIRED' && !reverifySuccess) {
+      return (
+        <div className="min-h-screen bg-[#FAF8F5] text-stone-800 font-sans">
+          <header className="sticky top-0 z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-stone-200/60">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+              <Link to="/" className="text-2xl sm:text-3xl font-bold font-serif text-[#1E5A5B]">
+                Amdavad Heritage
+              </Link>
+              <button onClick={logout} className="text-xs font-bold text-stone-600 hover:text-[#B84A22] flex items-center gap-1.5 bg-white border px-3 py-1.5 rounded-full shadow-sm">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </header>
+
+          <main className="max-w-2xl mx-auto px-4 py-12 space-y-6">
+            <form onSubmit={handleSubmitReverification} className="bg-white rounded-3xl p-8 border border-stone-200 shadow-xl space-y-6 text-left">
+              <div className="space-y-2">
+                <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold uppercase tracking-wider">
+                  Re-Verification Required
+                </span>
+                <h1 className="text-2xl font-serif font-bold text-stone-900">
+                  Submit Fresh Identity Documents
+                </h1>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Admin has requested updated identity verification documents for your host account. Please upload a clear copy of your Govt ID or Aadhaar card below.
+                </p>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                    Govt ID / Aadhaar Document URL or File Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Updated_Aadhaar_Govt_ID.pdf"
+                    value={reverifyDocUrl}
+                    onChange={(e) => setReverifyDocUrl(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-300 rounded-xl p-3 text-xs text-stone-800 focus:ring-2 focus:ring-[#1E5A5B] outline-none"
+                  />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1 text-xs text-amber-900">
+                  <p className="font-bold">Guidelines for Document Submission:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+                    <li>Ensure name on document matches registered applicant: <strong>{user?.full_name}</strong></li>
+                    <li>Must be a valid Government issued photo ID (Aadhaar / Passport / Voter ID)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="px-6 py-3 rounded-full border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-50 transition"
+                >
+                  Sign Out
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingReverify}
+                  className="px-8 py-3 rounded-full bg-[#1E5A5B] hover:bg-[#154142] disabled:opacity-50 text-white text-xs font-bold shadow-md flex items-center gap-2 transition hover:scale-105"
+                >
+                  {isSubmittingReverify ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit Documents for Review</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#FAF8F5] text-stone-800 font-sans selection:bg-[#B84A22] selection:text-white">
         <header className="sticky top-0 z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-stone-200/60">

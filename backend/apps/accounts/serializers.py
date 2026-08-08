@@ -39,9 +39,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         if role == 'host':
             validated_data['is_verified'] = False
             validated_data['is_id_verified'] = False
+            validated_data['verification_status'] = 'PENDING_VERIFICATION'
         else:
             validated_data['is_verified'] = True
             validated_data['is_id_verified'] = True
+            validated_data['verification_status'] = 'VERIFIED'
 
         user = User(**validated_data)
         user.set_password(password)

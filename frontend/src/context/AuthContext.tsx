@@ -11,6 +11,7 @@ export interface UserProfile {
   role: 'TRAVELER' | 'HOST' | 'ADMIN';
   is_id_verified?: boolean;
   is_verified?: boolean;
+  verification_status?: string;
   id_document_url?: string;
 }
 
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: userRole as any,
       is_id_verified: data.user?.is_id_verified ?? (userRole !== 'HOST'),
       is_verified: data.user?.is_verified ?? (userRole !== 'HOST'),
+      verification_status: data.user?.verification_status || (data.user?.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION'),
       id_document_url: data.user?.id_document_url || '',
     };
 

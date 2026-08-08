@@ -35,6 +35,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_verified = True
         user.is_id_verified = True
+        user.verification_status = 'VERIFIED'
         user.save()
         serializer = self.get_serializer(user)
         return Response({
@@ -43,13 +44,43 @@ class UserViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
+    def reject(self, request, pk=None):
+        user = self.get_object()
+        user.is_verified = False
+        user.is_id_verified = False
+        user.verification_status = 'REJECTED'
+        user.save()
+        serializer = self.get_serializer(user)
+        return Response({
+            "message": "Host verification rejected",
+            "user": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
     def reverify(self, request, pk=None):
         user = self.get_object()
         user.is_verified = False
         user.is_id_verified = False
+        user.verification_status = 'REVERIFICATION_REQUIRED'
         user.save()
         serializer = self.get_serializer(user)
         return Response({
             "message": "Host status set to pending re-verification",
+            "user": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
+    def submit_reverification(self, request, pk=None):
+        user = self.get_object()
+        doc_url = request.data.get('id_document_url') or request.data.get('document_url')
+        if doc_url:
+            user.id_document_url = doc_url
+        user.is_verified = False
+        user.is_id_verified = False
+        user.verification_status = 'PENDING_VERIFICATION'
+        user.save()
+        serializer = self.get_serializer(user)
+        return Response({
+            "message": "Re-verification documents submitted successfully. Status is now PENDING_VERIFICATION.",
             "user": serializer.data
         }, status=status.HTTP_200_OK)

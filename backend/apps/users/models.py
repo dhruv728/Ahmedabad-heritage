@@ -8,6 +8,12 @@ class User(AbstractUser):
         TRAVELER = 'traveler', 'Traveler'
         ADMIN = 'admin', 'Admin'
 
+    class VerificationStatus(models.TextChoices):
+        VERIFIED = 'VERIFIED', 'Verified'
+        PENDING_VERIFICATION = 'PENDING_VERIFICATION', 'Pending Verification'
+        REVERIFICATION_REQUIRED = 'REVERIFICATION_REQUIRED', 'Re-verification Required'
+        REJECTED = 'REJECTED', 'Rejected'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
@@ -17,6 +23,11 @@ class User(AbstractUser):
     is_phone_verified = models.BooleanField(default=False)
     is_id_verified = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
+    verification_status = models.CharField(
+        max_length=30,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING_VERIFICATION
+    )
     id_document_url = models.CharField(max_length=500, null=True, blank=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.TRAVELER)
     created_at = models.DateTimeField(auto_now_add=True)
