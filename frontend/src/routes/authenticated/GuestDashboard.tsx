@@ -570,7 +570,8 @@ export default function GuestDashboard() {
                   return (
                     <article
                       key={item.id}
-                      className="group bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                      onClick={() => setSelectedListing(item)}
+                      className="group bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
                     >
                       <div className="relative h-64 overflow-hidden bg-stone-100">
                         <img
@@ -628,13 +629,17 @@ export default function GuestDashboard() {
                           <div className="flex items-center gap-2">
                             <Link
                               to={`/listings/${item.id}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="px-3 py-1.5 rounded-full border border-[#1E5A5B] text-[#1E5A5B] hover:bg-[#1E5A5B]/10 text-xs font-semibold transition"
                             >
                               Details
                             </Link>
 
                             <button
-                              onClick={() => setSelectedListing(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedListing(item);
+                              }}
                               className="px-4 py-1.5 rounded-full bg-[#B84A22] hover:bg-[#A03E1C] text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition hover:scale-105"
                             >
                               <span>Book Now</span>

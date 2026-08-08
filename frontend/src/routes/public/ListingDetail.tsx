@@ -61,37 +61,15 @@ export default function ListingDetail() {
 
   useEffect(() => {
     const fetchListing = async () => {
+      if (!id) return;
       setLoading(true);
       try {
-        const res = await fetch(`/api/v1/listings/${id}/`);
-        if (res.ok) {
-          const data = await res.json();
-          setListing(data);
-        } else {
-          setListing({
-            id: id || '1',
-            title: 'The Mangaldas Haveli Wing B',
-            pol_name: 'Mangaldas Pol',
-            description: 'A magnificent 150-year-old wooden haveli in the heart of the walled city, featuring authentic heirloom furnishings, intricate hand-carved teakwood balconies, a central sunlit courtyard, and panoramic rooftop views of the historic Pol skyline.',
-            price_per_night: 2500,
-            max_guests: 4,
-            heritage_verified: true,
-            photos: [{ photo_url: '/images/mangaldas_room.png' }],
-            host: { full_name: 'Seth Mangaldas Family', superhost: true }
-          });
+        const res = await axios.get(`http://127.0.0.1:8000/api/v1/listings/${id}/`);
+        if (res.data) {
+          setListing(res.data);
         }
-      } catch {
-        setListing({
-          id: id || '1',
-          title: 'The Mangaldas Haveli Wing B',
-          pol_name: 'Mangaldas Pol',
-          description: 'A magnificent 150-year-old wooden haveli in the heart of the walled city, featuring authentic heirloom furnishings, intricate hand-carved teakwood balconies, a central sunlit courtyard, and panoramic rooftop views of the historic Pol skyline.',
-          price_per_night: 2500,
-          max_guests: 4,
-          heritage_verified: true,
-          photos: [{ photo_url: '/images/mangaldas_room.png' }],
-          host: { full_name: 'Seth Mangaldas Family', superhost: true }
-        });
+      } catch (err) {
+        console.warn(`Failed to fetch listing with ID ${id}`, err);
       } finally {
         setLoading(false);
       }

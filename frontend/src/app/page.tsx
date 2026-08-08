@@ -413,7 +413,8 @@ export default function TravelerLandingPage() {
                 return (
                   <article
                     key={item.id}
-                    className="group bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+                    onClick={() => setSelectedListing(item)}
+                    className="group bg-white rounded-2xl border border-stone-200/80 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer"
                   >
                     <div className="relative h-64 overflow-hidden bg-stone-100">
                       <img
@@ -425,7 +426,10 @@ export default function TravelerLandingPage() {
                         }}
                       />
 
-                      <button className="absolute top-3 left-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-stone-700 hover:text-[#B84A22] hover:bg-white transition shadow-sm">
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-3 left-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-stone-700 hover:text-[#B84A22] hover:bg-white transition shadow-sm"
+                      >
                         <Heart className="w-4 h-4" />
                       </button>
 
@@ -465,7 +469,7 @@ export default function TravelerLandingPage() {
                         </span>
                       </div>
 
-                      {/* Requirement 4: View Details / Book Now Triggers Booking Modal */}
+                      {/* View Details / Book Now */}
                       <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
                         <div>
                           <span className="text-base font-bold text-stone-900 font-serif">
@@ -474,13 +478,28 @@ export default function TravelerLandingPage() {
                           <span className="text-xs text-stone-500 font-normal"> / night</span>
                         </div>
 
-                        <button
-                          onClick={() => setSelectedListing(item)}
-                          className="px-4 py-2 rounded-full bg-[#B84A22] hover:bg-[#A03E1C] text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition hover:scale-105"
-                        >
-                          <span>Book Now</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/listings/${item.id}`);
+                            }}
+                            className="px-3 py-1.5 rounded-full border border-[#1E5A5B] text-[#1E5A5B] hover:bg-[#1E5A5B]/10 text-xs font-semibold transition"
+                          >
+                            Details
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedListing(item);
+                            }}
+                            className="px-4 py-1.5 rounded-full bg-[#B84A22] hover:bg-[#A03E1C] text-white text-xs font-semibold flex items-center gap-1 shadow-sm transition hover:scale-105"
+                          >
+                            <span>Book Now</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </article>
