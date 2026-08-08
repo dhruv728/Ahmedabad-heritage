@@ -50,6 +50,14 @@ export default function App() {
         }
       />
       <Route
+        path="/host/verify-identity"
+        element={
+          <ProtectedRoute allowedRoles={['HOST', 'ADMIN']}>
+            <HostDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/host/new-listing"
         element={
           <ProtectedRoute allowedRoles={['HOST', 'ADMIN']}>

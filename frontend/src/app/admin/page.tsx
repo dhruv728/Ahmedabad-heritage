@@ -46,6 +46,7 @@ interface UserRecord {
   is_verified: boolean;
   is_id_verified: boolean;
   verification_status?: string;
+  resubmitted_at?: string;
   created_at?: string;
 }
 
@@ -84,15 +85,26 @@ export default function AdminDashboardPage() {
     doc_type: string;
   } | null>(null);
 
-  const pendingHosts = allHosts.filter((h) => !h.is_verified || !h.is_id_verified);
-  const pendingListings = allListings.filter((l) => l.status === 'PENDING' || l.status === 'pending' || l.status === 'under_review');
-  const activeListings = allListings.filter((l) => l.status === 'APPROVED' || l.status === 'active' || l.heritage_verified);
+  const pendingHosts = allHosts.filter(
+    (h) =>
+      !h.is_verified ||
+      !h.is_id_verified ||
+      h.verification_status === 'PENDING_VERIFICATION' ||
+      h.verification_status === 'REVERIFICATION_REQUIRED' ||
+      h.verification_status === 'REJECTED'
+  );
+  const pendingListings = allListings.filter(
+    (l) => l.status === 'PENDING' || l.status === 'pending' || l.status === 'under_review'
+  );
+  const activeListings = allListings.filter(
+    (l) => l.status === 'APPROVED' || l.status === 'active' || l.heritage_verified
+  );
 
   const metrics = [
-    { id: 'pending', title: 'PENDING APPROVALS', value: (pendingHosts.length + pendingListings.length).toString(), change: 'Awaiting verification', icon: ClipboardList, color: 'text-amber-700', bg: 'bg-amber-100' },
-    { id: 'hosts', title: 'TOTAL HOSTS', value: allHosts.length.toLocaleString('en-IN'), change: `${allHosts.filter((h) => h.is_verified).length} Verified`, icon: Building2, color: 'text-[#B84A22]', bg: 'bg-[#B84A22]/10' },
-    { id: 'listings', title: 'ACTIVE LISTINGS', value: activeListings.length.toLocaleString('en-IN'), change: 'Published on portal', icon: Wallet, color: 'text-emerald-700', bg: 'bg-emerald-100' },
-    { id: 'travelers', title: 'TOTAL TRAVELERS', value: allTravelers.length.toLocaleString('en-IN'), change: 'Registered travelers', icon: Users, color: 'text-[#1E5A5B]', bg: 'bg-[#1E5A5B]/10' },
+    { id: 'pending', title: 'PENDING APPROVALS', value: (pendingHosts.length + pendingListings.length).toString(), change: `${pendingHosts.length} Hosts · ${pendingListings.length} Listings`, icon: ClipboardList, color: 'text-amber-700', bg: 'bg-amber-100' },
+    { id: 'hosts', title: 'TOTAL HOSTS', value: allHosts.length.toString(), change: `${allHosts.filter((h) => h.is_verified).length} Verified`, icon: Building2, color: 'text-[#B84A22]', bg: 'bg-[#B84A22]/10' },
+    { id: 'listings', title: 'ACTIVE LISTINGS', value: activeListings.length.toString(), change: 'Published on portal', icon: Wallet, color: 'text-emerald-700', bg: 'bg-emerald-100' },
+    { id: 'travelers', title: 'TOTAL TRAVELERS', value: allTravelers.length.toString(), change: 'Active explorers', icon: Users, color: 'text-[#1E5A5B]', bg: 'bg-[#1E5A5B]/10' },
   ];
 
   const polClusterData = [
@@ -116,7 +128,11 @@ export default function AdminDashboardPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/v1/users/');
+      const token = accessToken || localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await axios.get('http://127.0.0.1:8000/api/v1/users/', { headers });
       const data = res.data;
       const results: any[] = Array.isArray(data) ? data : data.results || [];
       
@@ -132,6 +148,7 @@ export default function AdminDashboardPage() {
           is_verified: Boolean(u.is_verified),
           is_id_verified: Boolean(u.is_id_verified),
           verification_status: u.verification_status || (u.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION'),
+          resubmitted_at: u.resubmitted_at ? new Date(u.resubmitted_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '',
           created_at: u.created_at || 'Recently registered',
         }));
 
@@ -159,7 +176,11 @@ export default function AdminDashboardPage() {
 
   const fetchListings = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/v1/listings/?status=ALL');
+      const token = accessToken || localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await axios.get('http://127.0.0.1:8000/api/v1/listings/?status=ALL', { headers });
       const data = res.data;
       const results: any[] = Array.isArray(data) ? data : data.results || [];
       const formatted: ListingRecord[] = results.map((item: any) => ({
@@ -202,6 +223,7 @@ export default function AdminDashboardPage() {
     setAllHosts((prev) =>
       prev.map((item) => (item.id === id ? { ...item, is_verified: true, is_id_verified: true, verification_status: 'VERIFIED' } : item))
     );
+    await fetchUsers();
 
     setNotification(`Host "${name}" identity verified successfully! Access granted to Host Portal.`);
     setTimeout(() => setNotification(null), 4000);
@@ -222,6 +244,7 @@ export default function AdminDashboardPage() {
     setAllHosts((prev) =>
       prev.map((item) => (item.id === id ? { ...item, is_verified: false, is_id_verified: false, verification_status: 'REJECTED' } : item))
     );
+    await fetchUsers();
 
     setNotification(`Host "${name}" verification rejected. Portal access revoked.`);
     setTimeout(() => setNotification(null), 4000);
@@ -242,6 +265,7 @@ export default function AdminDashboardPage() {
     setAllHosts((prev) =>
       prev.map((item) => (item.id === id ? { ...item, is_verified: false, is_id_verified: false, verification_status: 'REVERIFICATION_REQUIRED' } : item))
     );
+    await fetchUsers();
 
     setNotification(`Host "${name}" status set to REVERIFICATION_REQUIRED. Host must submit fresh documents upon login.`);
     setTimeout(() => setNotification(null), 4000);
@@ -262,6 +286,7 @@ export default function AdminDashboardPage() {
     setAllListings((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'APPROVED', heritage_verified: true } : item))
     );
+    await fetchListings();
 
     setNotification(`Property "${title}" approved & published to public traveler search!`);
     setTimeout(() => setNotification(null), 4000);
@@ -282,6 +307,7 @@ export default function AdminDashboardPage() {
     setAllListings((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'PENDING', heritage_verified: false } : item))
     );
+    await fetchListings();
 
     setNotification(`Property "${title}" status set to PENDING Re-Verification. Removed from public feed until approved.`);
     setTimeout(() => setNotification(null), 4000);
@@ -501,13 +527,27 @@ export default function AdminDashboardPage() {
                             </td>
 
                             <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                                h.verification_status === 'REVERIFICATION_REQUIRED'
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                  : 'bg-amber-100 text-amber-800 border border-amber-300'
-                              }`}>
-                                {h.verification_status || 'PENDING_VERIFICATION'}
-                              </span>
+                              <div className="space-y-1">
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                                  h.verification_status === 'REVERIFICATION_REQUIRED'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                }`}>
+                                  {h.verification_status || 'PENDING_VERIFICATION'}
+                                </span>
+
+                                {h.resubmitted_at && (
+                                  <div className="pt-1 flex flex-col items-start gap-0.5">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 flex items-center gap-1">
+                                      <Sparkles className="w-3 h-3 text-purple-600" />
+                                      <span>RESUBMITTED / RE-UPLOADED</span>
+                                    </span>
+                                    <span className="text-[10px] text-stone-400 font-mono">
+                                      Updated: {h.resubmitted_at}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             <td className="px-6 py-4 text-right">
@@ -707,30 +747,42 @@ export default function AdminDashboardPage() {
 
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                          h.is_verified ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          h.is_verified || h.verification_status === 'VERIFIED'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : h.verification_status === 'REJECTED'
+                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300'
                         }`}>
-                          {h.is_verified ? 'VERIFIED HOST' : 'PENDING_VERIFICATION'}
+                          {h.verification_status || (h.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION')}
                         </span>
                       </td>
 
-                      {/* Requirement 4: Request Re-Verification Action Button */}
                       <td className="px-6 py-4 text-right">
-                        {h.is_verified ? (
+                        {h.is_verified || h.verification_status === 'VERIFIED' ? (
                           <button
                             onClick={() => handleReverifyHost(h.id, h.full_name)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold transition"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold transition hover:scale-105"
                           >
                             <RefreshCw className="w-3 h-3" />
                             <span>Request Re-Verification</span>
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleApproveHost(h.id, h.full_name)}
-                            className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#1E5A5B] text-white text-[11px] font-bold hover:bg-[#154142] transition"
-                          >
-                            <Check className="w-3 h-3 stroke-[3]" />
-                            <span>Approve Host</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveHost(h.id, h.full_name)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#1E5A5B] text-white text-[11px] font-bold hover:bg-[#154142] transition hover:scale-105"
+                            >
+                              <Check className="w-3 h-3 stroke-[3]" />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleRejectHost(h.id, h.full_name)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 text-[11px] font-bold transition hover:scale-105"
+                            >
+                              <X className="w-3 h-3 stroke-[3]" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

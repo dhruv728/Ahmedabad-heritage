@@ -29,6 +29,7 @@ class User(AbstractUser):
         default=VerificationStatus.PENDING_VERIFICATION
     )
     id_document_url = models.CharField(max_length=500, null=True, blank=True)
+    resubmitted_at = models.DateTimeField(null=True, blank=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.TRAVELER)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

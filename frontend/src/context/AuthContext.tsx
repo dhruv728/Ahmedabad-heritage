@@ -13,6 +13,7 @@ export interface UserProfile {
   is_verified?: boolean;
   verification_status?: string;
   id_document_url?: string;
+  resubmitted_at?: string;
 }
 
 interface AuthContextType {
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       is_verified: data.user?.is_verified ?? (userRole !== 'HOST'),
       verification_status: data.user?.verification_status || (data.user?.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION'),
       id_document_url: data.user?.id_document_url || '',
+      resubmitted_at: data.user?.resubmitted_at || '',
     };
 
     setAccessToken(token);

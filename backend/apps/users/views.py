@@ -1,8 +1,10 @@
+from django.utils import timezone
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from .serializers import UserPublicSerializer, UserProfileSerializer
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -17,6 +19,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if role:
             qs = qs.filter(role__iexact=role)
 
+        verification_status = self.request.query_params.get('verification_status')
+        if verification_status:
+            qs = qs.filter(verification_status__iexact=verification_status)
+
         is_verified_param = self.request.query_params.get('is_verified')
         if is_verified_param is not None:
             if is_verified_param.lower() in ['false', '0']:
@@ -26,9 +32,20 @@ class UserViewSet(viewsets.ModelViewSet):
 
         status_param = self.request.query_params.get('status')
         if status_param and status_param.lower() == 'pending':
-            qs = qs.filter(is_verified=False)
+            qs = qs.filter(Q(is_verified=False) | Q(verification_status__in=['PENDING_VERIFICATION', 'REVERIFICATION_REQUIRED', 'REJECTED']))
 
         return qs
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def me(self, request):
+        user_id = request.query_params.get('id')
+        if user_id:
+            user = User.objects.filter(id=user_id).first()
+            if user:
+                return Response(self.get_serializer(user).data)
+        if request.user and request.user.is_authenticated:
+            return Response(self.get_serializer(request.user).data)
+        return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
     def verify(self, request, pk=None):
@@ -72,15 +89,24 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
     def submit_reverification(self, request, pk=None):
         user = self.get_object()
-        doc_url = request.data.get('id_document_url') or request.data.get('document_url')
+        doc_url = request.data.get('id_document_url') or request.data.get('identity_document') or request.data.get('document_url')
+        if not doc_url and request.FILES:
+            uploaded_file = request.FILES.get('file') or request.FILES.get('id_document') or request.FILES.get('document')
+            if uploaded_file:
+                doc_url = uploaded_file.name
         if doc_url:
-            user.id_document_url = doc_url
+            user.id_document_url = str(doc_url)
         user.is_verified = False
         user.is_id_verified = False
         user.verification_status = 'PENDING_VERIFICATION'
+        user.resubmitted_at = timezone.now()
         user.save()
         serializer = self.get_serializer(user)
         return Response({
             "message": "Re-verification documents submitted successfully. Status is now PENDING_VERIFICATION.",
             "user": serializer.data
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch', 'post'], permission_classes=[permissions.AllowAny])
+    def upload_id(self, request, pk=None):
+        return self.submit_reverification(request, pk=pk)
