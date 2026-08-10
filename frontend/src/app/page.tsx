@@ -220,7 +220,10 @@ export default function TravelerLandingPage() {
                   </a>
                 )}
 
-                <div className="flex items-center gap-2 bg-white border border-stone-200/80 px-3 py-1.5 rounded-full shadow-sm">
+                <div 
+                  onClick={() => navigate(getRedirectPathForRole(user?.role || 'TRAVELER'))}
+                  className="flex items-center gap-2 bg-white border border-stone-200/80 px-3 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-stone-50 transition"
+                >
                   <div className="w-7 h-7 rounded-full bg-[#1E5A5B] text-white flex items-center justify-center text-xs font-bold font-serif">
                     {user?.full_name?.charAt(0) || 'U'}
                   </div>
@@ -228,7 +231,10 @@ export default function TravelerLandingPage() {
                     {user?.full_name || user?.username}
                   </span>
                   <button
-                    onClick={logout}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      logout();
+                    }}
                     title="Sign Out"
                     className="ml-1 text-stone-400 hover:text-[#B84A22] transition"
                   >
@@ -238,9 +244,6 @@ export default function TravelerLandingPage() {
               </div>
             ) : (
               <>
-                <a href="/host/dashboard" className="hidden sm:inline-flex text-xs font-semibold uppercase tracking-wider text-stone-700 hover:text-[#B84A22] transition px-3 py-2">
-                  Host a Pol Home
-                </a>
 
                 <button
                   type="button"

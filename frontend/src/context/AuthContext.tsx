@@ -55,13 +55,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedToken = localStorage.getItem('access_token');
     const savedUser = localStorage.getItem('user_profile');
-    if (savedToken && savedUser) {
-      try {
-        setAccessToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.warn('Failed to parse saved user profile:', e);
+    if (savedToken) {
+      setAccessToken(savedToken);
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.warn('Failed to parse saved user profile:', e);
+        }
       }
+
+      // Hydrate user profile from API
+      fetch('http://127.0.0.1:8000/api/v1/users/me/', {
+        headers: { 'Authorization': `Bearer ${savedToken}` }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch user');
+        return res.json();
+      })
+      .then(data => {
+        const userRole = (data.role || 'TRAVELER').toUpperCase();
+        const profile: UserProfile = {
+          id: data.id || 'user_id',
+          username: data.username || data.email || '',
+          email: data.email,
+          phone: data.phone || '',
+          full_name: data.full_name || 'User',
+          role: userRole as any,
+          is_id_verified: data.is_id_verified ?? (userRole !== 'HOST'),
+          is_verified: data.is_verified ?? (userRole !== 'HOST'),
+          verification_status: data.verification_status || (data.is_verified ? 'VERIFIED' : 'PENDING_VERIFICATION'),
+          id_document_url: data.id_document_url || '',
+          resubmitted_at: data.resubmitted_at || '',
+        };
+        setUser(profile);
+        localStorage.setItem('user_profile', JSON.stringify(profile));
+      })
+      .catch(e => {
+        console.warn('Could not hydrate user profile:', e);
+      });
     }
   }, []);
 
