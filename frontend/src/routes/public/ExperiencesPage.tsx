@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/layout/Navbar';
 import { Filter, Calendar, MapPin, CheckCircle2, ArrowRight } from 'lucide-react';
+import heritageWalkImg from '../../assets/experiences/heritage-walk.jpg';
+import manekChowkImg from '../../assets/experiences/manek-chowk.jpg';
+import blockPrintingImg from '../../assets/experiences/block-printing.jpg';
+import polGarbaImg from '../../assets/experiences/pol-garba.jpg';
 
 const EXPERIENCES = [
   {
@@ -10,7 +14,7 @@ const EXPERIENCES = [
     description: 'A guided walk starting from Swaminarayan Mandir in Kalupur to Jama Masjid. Witness the intricate architecture, secret passages, and the morning hustle of the Pols.',
     price: 350,
     duration: '2.5 Hours',
-    image: '/images/hero_courtyard.png',
+    image: heritageWalkImg,
   },
   {
     id: 'food',
@@ -19,7 +23,7 @@ const EXPERIENCES = [
     description: 'Experience the transformation of the city square into a bustling street food paradise. Taste iconic dishes like Ghughra sandwich, Pav Bhaji, and unique dosas.',
     price: 800,
     duration: '3 Hours',
-    image: '/images/mangaldas_room.png',
+    image: manekChowkImg,
   },
   {
     id: 'art',
@@ -28,7 +32,7 @@ const EXPERIENCES = [
     description: 'Learn the ancient art of block printing from local artisans. Create your own souvenir fabric using traditional carved wooden blocks and natural dyes.',
     price: 1200,
     duration: '4 Hours',
-    image: '/images/hero_courtyard.png',
+    image: blockPrintingImg,
   },
   {
     id: 'culture',
@@ -37,7 +41,7 @@ const EXPERIENCES = [
     description: 'Join the locals in their neighborhood chowk for an authentic, high-energy Garba night during Navratri. Traditional attire encouraged!',
     price: 500,
     duration: 'Late Night',
-    image: '/images/mangaldas_room.png',
+    image: polGarbaImg,
   },
 ];
 
@@ -91,7 +95,7 @@ export default function ExperiencesPage() {
                 <img
                   src={exp.image}
                   alt={exp.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  className="object-cover object-center w-full h-full rounded-l-2xl hover:scale-105 transition-transform duration-300"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/images/mangaldas_room.png';
                   }}
