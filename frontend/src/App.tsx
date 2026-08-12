@@ -3,6 +3,9 @@ import { Routes, Route } from 'react-router-dom';
 import TravelerLandingPage from './app/page';
 import ListingDetail from './routes/public/ListingDetail';
 import PolStoryPage from './routes/public/PolStoryPage';
+import PolAreaPage from './routes/public/PolAreaPage';
+import ExperiencesPage from './routes/public/ExperiencesPage';
+import HeritageMapPage from './routes/public/HeritageMapPage';
 import LoginPage from './routes/public/LoginPage';
 import HostDashboard from './routes/authenticated/HostDashboard';
 import GuestDashboard from './routes/authenticated/GuestDashboard';
@@ -17,6 +20,9 @@ export default function App() {
       <Route path="/" element={<TravelerLandingPage />} />
       <Route path="/search" element={<TravelerLandingPage />} />
       <Route path="/listings/:id" element={<ListingDetail />} />
+      <Route path="/pols" element={<PolAreaPage />} />
+      <Route path="/experiences" element={<ExperiencesPage />} />
+      <Route path="/map" element={<HeritageMapPage />} />
       <Route path="/pol/:polSlug" element={<PolStoryPage />} />
       <Route path="/login" element={<LoginPage />} />
 
