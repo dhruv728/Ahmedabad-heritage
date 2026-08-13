@@ -44,7 +44,7 @@ interface Listing {
 export default function ListingDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -52,8 +52,10 @@ export default function ListingDetail() {
   const [checkIn, setCheckIn] = useState<string>('2026-08-15');
   const [checkOut, setCheckOut] = useState<string>('2026-08-17');
   const [guests, setGuests] = useState<number>(2);
-  const [festivalMultiplier, setFestivalMultiplier] = useState<number>(1.0);
-  const [festivalName, setFestivalName] = useState<string>('');
+  const [bookingPurpose, setBookingPurpose] = useState<string>('🏛️ Heritage Sightseeing & Pol Walk');
+  const [bookingArrival, setBookingArrival] = useState<string>('Afternoon (12 PM - 5 PM)');
+  const [priceBreakdown, setPriceBreakdown] = useState<any>(null);
+  const [isCalculatingPrice, setIsCalculatingPrice] = useState<boolean>(false);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -80,23 +82,32 @@ export default function ListingDetail() {
 
   // Requirement 3: Check festival dates for surge multiplier calculation
   useEffect(() => {
-    if (checkIn) {
-      const dateStr = checkIn.slice(5); // MM-DD
-      if (dateStr >= '01-13' && dateStr <= '01-16') {
-        setFestivalMultiplier(2.2);
-        setFestivalName('Uttarayan Kite Festival Peak (2.2x)');
-      } else if (dateStr >= '10-10' && dateStr <= '10-20') {
-        setFestivalMultiplier(1.8);
-        setFestivalName('Navratri Garba Nights (1.8x)');
-      } else if (dateStr >= '11-01' && dateStr <= '11-10') {
-        setFestivalMultiplier(1.6);
-        setFestivalName('Diwali Lights Surge (1.6x)');
-      } else {
-        setFestivalMultiplier(1.0);
-        setFestivalName('');
-      }
+    if (listing && checkIn && checkOut) {
+      if (new Date(checkOut) <= new Date(checkIn)) return;
+
+      const calcPrice = async () => {
+        setIsCalculatingPrice(true);
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          const token = localStorage.getItem('access_token');
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const res = await axios.post('http://127.0.0.1:8000/api/v1/bookings/calculate-price/', {
+            listing_id: listing.id,
+            check_in: checkIn,
+            check_out: checkOut,
+            guest_count: guests
+          }, { headers });
+          setPriceBreakdown(res.data);
+        } catch (err) {
+          setPriceBreakdown(null);
+        } finally {
+          setIsCalculatingPrice(false);
+        }
+      };
+      calcPrice();
     }
-  }, [checkIn]);
+  }, [checkIn, checkOut, guests, listing]);
 
   const calcNights = () => {
     try {
@@ -112,9 +123,6 @@ export default function ListingDetail() {
 
   const nights = calcNights();
   const basePrice = listing ? Number(listing.price_per_night) : 2500;
-  const subtotal = Math.round(basePrice * nights * festivalMultiplier);
-  const communityFee = Math.round(subtotal * 0.05);
-  const totalPrice = subtotal + communityFee;
 
   // Requirement 4: Process Booking via POST /api/v1/bookings/ or prompt Sign In for unauthenticated users
   const handleBooking = async (e: React.FormEvent) => {
@@ -135,7 +143,10 @@ export default function ListingDetail() {
       check_in: checkIn,
       check_out: checkOut,
       guest_count: guests,
-      festival_tag: festivalName ? 'uttarayan' : 'none',
+      festival_tag: priceBreakdown?.detected_festival_name || 'none',
+      purpose_of_visit: bookingPurpose,
+      estimated_arrival_time: bookingArrival,
+      origin_city: (user as any)?.home_city || 'none'
     };
 
     try {
@@ -298,6 +309,28 @@ export default function ListingDetail() {
                   <span className="text-xs font-bold text-amber-500">★ 4.9 (14 reviews)</span>
                 </div>
 
+                {/* Auto-filled User Context */}
+                {isAuthenticated && user && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">Full Name</label>
+                      <input type="text" readOnly value={user?.full_name || ''} className="w-full bg-stone-100 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-500 outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">Email</label>
+                      <input type="text" readOnly value={user?.email || ''} className="w-full bg-stone-100 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-500 outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">Phone</label>
+                      <input type="text" readOnly value={user?.phone || ''} className="w-full bg-stone-100 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-500 outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">Home City</label>
+                      <input type="text" readOnly value={(user as any)?.home_city || 'Not specified'} className="w-full bg-stone-100 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-500 outline-none" />
+                    </div>
+                  </div>
+                )}
+
                 {/* Form Controls */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
@@ -322,6 +355,26 @@ export default function ListingDetail() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">PURPOSE OF VISIT</label>
+                      <select value={bookingPurpose} onChange={(e) => setBookingPurpose(e.target.value)} className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-800 focus:ring-2 focus:ring-[#1E5A5B] outline-none">
+                        <option value="🏛️ Heritage Sightseeing & Pol Walk">🏛️ Heritage Sightseeing & Pol Walk</option>
+                        <option value="🎉 Festival & Events">🎉 Festival & Events</option>
+                        <option value="💼 Business / Work">💼 Business / Work</option>
+                        <option value="👨‍👩‍👧‍👦 Family Trip">👨‍👩‍👧‍👦 Family Trip</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] uppercase font-bold text-stone-500">ESTIMATED ARRIVAL TIME</label>
+                      <select value={bookingArrival} onChange={(e) => setBookingArrival(e.target.value)} className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2.5 text-xs text-stone-800 focus:ring-2 focus:ring-[#1E5A5B] outline-none">
+                        <option value="Early Morning (6 AM - 12 PM)">Early Morning (6 AM - 12 PM)</option>
+                        <option value="Afternoon (12 PM - 5 PM)">Afternoon (12 PM - 5 PM)</option>
+                        <option value="Evening (5 PM - 10 PM)">Evening (5 PM - 10 PM)</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <label className="block text-[11px] uppercase font-bold text-stone-500">GUESTS</label>
                     <select
@@ -338,36 +391,55 @@ export default function ListingDetail() {
                 </div>
 
                 {/* Festival Surge Notification Badge */}
-                {festivalName && (
+                {priceBreakdown?.detected_festival_name && (
                   <div className="p-3 rounded-xl bg-amber-100/70 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#B84A22] shrink-0" />
-                    <span>{festivalName}</span>
+                    <span>🎉 Festival Special: {priceBreakdown.detected_festival_name}</span>
                   </div>
                 )}
 
                 {/* Itemized Price Calculation Breakdown */}
                 <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2 text-xs">
-                  <div className="flex justify-between text-stone-600">
-                    <span>₹{basePrice.toLocaleString('en-IN')} × {nights} nights</span>
-                    <span>₹{(basePrice * nights).toLocaleString('en-IN')}</span>
-                  </div>
-
-                  {festivalMultiplier > 1.0 && (
-                    <div className="flex justify-between text-amber-800 font-semibold">
-                      <span>Festival Multiplier ({festivalMultiplier}x)</span>
-                      <span>+₹{Math.round(basePrice * nights * (festivalMultiplier - 1)).toLocaleString('en-IN')}</span>
-                    </div>
+                  {isCalculatingPrice ? (
+                     <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-stone-400" /></div>
+                  ) : priceBreakdown ? (
+                     <>
+                       <div className="flex justify-between text-stone-600">
+                         <span>Base Rate ({calcNights()} nights)</span>
+                         <span>₹{priceBreakdown.base_rate}</span>
+                       </div>
+                       {priceBreakdown.festival_surge > 0 && (
+                         <div className="flex justify-between text-amber-800 font-semibold">
+                           <span>Festival Surge</span>
+                           <span>+ ₹{priceBreakdown.festival_surge}</span>
+                         </div>
+                       )}
+                       {priceBreakdown.weekend_surge > 0 && (
+                         <div className="flex justify-between text-stone-600">
+                           <span>Weekend Surge</span>
+                           <span>+ ₹{priceBreakdown.weekend_surge}</span>
+                         </div>
+                       )}
+                       {priceBreakdown.discount > 0 && (
+                         <div className="flex justify-between text-green-600">
+                           <span>Long Stay Discount</span>
+                           <span>- ₹{priceBreakdown.discount}</span>
+                         </div>
+                       )}
+                       <div className="flex justify-between text-stone-600">
+                         <span>Community Fee (5%)</span>
+                         <span>₹{Math.round(priceBreakdown.total * 0.05).toLocaleString('en-IN')}</span>
+                       </div>
+                       <div className="pt-2 border-t border-amber-200/80 flex justify-between font-bold text-stone-900 text-sm font-serif">
+                         <span>Final Total Price</span>
+                         <span className="text-[#B84A22]">
+                           ₹{Math.round(priceBreakdown.total * 1.05).toLocaleString('en-IN')}
+                         </span>
+                       </div>
+                     </>
+                  ) : (
+                     <div className="text-center text-stone-500 py-2">Select valid dates for price calculation</div>
                   )}
-
-                  <div className="flex justify-between text-stone-600">
-                    <span>AHHE Community Heritage Fee (5%)</span>
-                    <span>₹{communityFee.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div className="pt-2 border-t border-amber-200/80 flex justify-between font-bold text-stone-900 text-sm font-serif">
-                    <span>Total Booking Price</span>
-                    <span className="text-[#B84A22]">₹{totalPrice.toLocaleString('en-IN')}</span>
-                  </div>
                 </div>
 
                 {errorMsg && (
