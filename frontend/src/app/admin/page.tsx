@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import Plot from 'react-plotly.js';
 import {
   Building2,
   Wallet,
@@ -68,8 +69,8 @@ interface ListingRecord {
 export default function AdminDashboardPage() {
   const { user, accessToken, logout } = useAuth();
 
-  // Admin View Modes: 'pending' | 'hosts' | 'listings' | 'travelers'
-  const [adminMode, setAdminMode] = useState<'pending' | 'hosts' | 'listings' | 'travelers'>('pending');
+  // Admin View Modes: 'pending' | 'hosts' | 'listings' | 'travelers' | 'analytics'
+  const [adminMode, setAdminMode] = useState<'pending' | 'hosts' | 'listings' | 'travelers' | 'analytics'>('pending');
   const [pendingSubTab, setPendingSubTab] = useState<'hosts' | 'listings'>('hosts');
 
   // Datasets
@@ -105,6 +106,7 @@ export default function AdminDashboardPage() {
     { id: 'hosts', title: 'TOTAL HOSTS', value: allHosts.length.toString(), change: `${allHosts.filter((h) => h.is_verified).length} Verified`, icon: Building2, color: 'text-[#B84A22]', bg: 'bg-[#B84A22]/10' },
     { id: 'listings', title: 'ACTIVE LISTINGS', value: activeListings.length.toString(), change: 'Published on portal', icon: Wallet, color: 'text-emerald-700', bg: 'bg-emerald-100' },
     { id: 'travelers', title: 'TOTAL TRAVELERS', value: allTravelers.length.toString(), change: 'Active explorers', icon: Users, color: 'text-[#1E5A5B]', bg: 'bg-[#1E5A5B]/10' },
+    { id: 'analytics', title: 'PLATFORM ANALYTICS', value: 'Live', change: 'Charts & Insights', icon: TrendingUp, color: 'text-purple-700', bg: 'bg-purple-100' },
   ];
 
   const polClusterData = [
@@ -938,67 +940,132 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Analytics Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Pol Cluster Distribution Chart */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-stone-900">Pol Cluster Capacity & Density</h3>
-                <p className="text-xs text-stone-500">Host density and room capacity across Old Ahmedabad Pol sectors.</p>
+        {adminMode === 'analytics' && (
+          <div className="space-y-8 animate-fade-in">
+            {/* Interactive Holiday Calendar */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-sm">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3 mb-6">
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-stone-900">August 2026 Festival Calendar</h3>
+                  <p className="text-xs text-stone-500">Automatically highlighted Gujarat Public Holidays & Festivals.</p>
+                </div>
+                <Award className="w-5 h-5 text-[#B84A22]" />
               </div>
-              <Building2 className="w-5 h-5 text-[#1E5A5B]" />
+
+              <div className="grid grid-cols-7 gap-2 max-w-2xl mx-auto">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="text-center text-xs font-bold text-stone-400 uppercase py-2">{d}</div>
+                ))}
+                {/* Empty days for August 2026 (Starts on Saturday) */}
+                {[...Array(6)].map((_, i) => <div key={`empty-${i}`} className="p-2" />)}
+                {[...Array(31)].map((_, i) => {
+                  const day = i + 1;
+                  const isHoliday = day === 15 || day === 26 || day === 30; // 15: Independence Day, 26: Janmashtami, 30: Raksha Bandhan
+                  const holidayName = day === 15 ? 'Independence Day' : day === 26 ? 'Janmashtami' : day === 30 ? 'Raksha Bandhan' : '';
+                  return (
+                    <div 
+                      key={day} 
+                      className={`relative aspect-square flex flex-col items-center justify-center rounded-xl border transition-all ${
+                        isHoliday 
+                          ? 'bg-[#B84A22]/10 border-[#B84A22]/30 text-[#B84A22] font-bold shadow-sm hover:scale-105' 
+                          : 'bg-stone-50 border-stone-100 text-stone-600 hover:bg-stone-100'
+                      }`}
+                      title={holidayName}
+                    >
+                      <span className="text-sm">{day}</span>
+                      {isHoliday && <span className="text-[8px] leading-tight text-center px-1 mt-1 font-bold">{holidayName}</span>}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="h-72 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={polClusterData}>
-                  <XAxis dataKey="name" stroke="#78716c" fontSize={11} />
-                  <YAxis stroke="#78716c" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#FAF8F5', borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: '12px' }}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Overall Platform Revenue Chart */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div>
+                    <h3 className="font-serif font-bold text-lg text-stone-900">Platform Revenue & Commission</h3>
+                    <p className="text-xs text-stone-500">Gross Booking Value vs 5% Platform Commission.</p>
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="h-72 w-full pt-2">
+                  <Plot
+                    data={[
+                      {
+                        x: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                        y: [1200000, 950000, 800000, 750000, 600000, 550000, 900000, 1500000],
+                        type: 'bar',
+                        name: 'Gross Booking Value',
+                        marker: { color: '#1E5A5B' },
+                      },
+                      {
+                        x: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                        y: [60000, 47500, 40000, 37500, 30000, 27500, 45000, 75000],
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Platform Commission (5%)',
+                        marker: { color: '#B84A22', size: 8 },
+                        line: { color: '#B84A22', width: 3 },
+                      }
+                    ]}
+                    layout={{
+                      autosize: true,
+                      margin: { l: 40, r: 20, t: 20, b: 40 },
+                      paper_bgcolor: 'transparent',
+                      plot_bgcolor: 'transparent',
+                      xaxis: { showgrid: false },
+                      yaxis: { gridcolor: '#f0f0f0' },
+                      legend: { orientation: 'h', y: -0.2 }
+                    }}
+                    useResizeHandler={true}
+                    style={{ width: '100%', height: '100%' }}
+                    config={{ displayModeBar: false }}
                   />
-                  <Bar dataKey="capacity" radius={[8, 8, 0, 0]}>
-                    {polClusterData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Pol Area Demand Heatmap */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div>
+                    <h3 className="font-serif font-bold text-lg text-stone-900">Pol Area Demand Heatmap</h3>
+                    <p className="text-xs text-stone-500">Booking demand across different heritage sectors.</p>
+                  </div>
+                  <Globe className="w-5 h-5 text-[#1E5A5B]" />
+                </div>
+                <div className="h-72 w-full pt-2">
+                  <Plot
+                    data={[
+                      {
+                        z: [
+                          [10, 20, 30, 50, 10],
+                          [20, 10, 40, 20, 30],
+                          [30, 60, 20, 10, 20],
+                          [40, 20, 10, 30, 40],
+                        ],
+                        x: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
+                        y: ['Dhal ni Pol', 'Khadia Pol', 'Mandvi ni Pol', 'Manek Chowk'],
+                        type: 'heatmap',
+                        colorscale: 'YlOrRd',
+                      }
+                    ]}
+                    layout={{
+                      autosize: true,
+                      margin: { l: 90, r: 20, t: 20, b: 40 },
+                      paper_bgcolor: 'transparent',
+                      plot_bgcolor: 'transparent',
+                    }}
+                    useResizeHandler={true}
+                    style={{ width: '100%', height: '100%' }}
+                    config={{ displayModeBar: false }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* ML Festival Demand Forecasting Chart */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/80 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-stone-900">ML Festival Demand Forecast</h3>
-                <p className="text-xs text-stone-500">Predictive traveler influx mapped against major cultural festivals.</p>
-              </div>
-              <TrendingUp className="w-5 h-5 text-[#B84A22]" />
-            </div>
-
-            <div className="h-72 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mlForecastData}>
-                  <defs>
-                    <linearGradient id="festivalSurge" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#B84A22" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#B84A22" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="festival" stroke="#78716c" fontSize={10} />
-                  <YAxis stroke="#78716c" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#FAF8F5', borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: '12px' }}
-                  />
-                  <Area type="monotone" dataKey="influx" stroke="#B84A22" strokeWidth={3} fillOpacity={1} fill="url(#festivalSurge)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-        </div>
+        )}
 
       </main>
 

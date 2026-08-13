@@ -32,6 +32,8 @@ class Booking(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.REQUESTED)
     festival_tag = models.CharField(max_length=50, choices=FestivalTag.choices, default=FestivalTag.NONE)
+    purpose_of_visit = models.CharField(max_length=100, null=True, blank=True)
+    estimated_arrival_time = models.TimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

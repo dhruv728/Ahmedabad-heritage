@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import Plot from 'react-plotly.js';
 import ListingWizard from '../../components/host/ListingWizard';
 import HostVerificationPending from '../../components/host/HostVerificationPending';
 import {
@@ -31,13 +32,15 @@ interface HostBookingRequest {
   id: string;
   traveler_name: string;
   traveler_phone: string;
+  traveler_city: string;
   property_title: string;
   pol_name: string;
   check_in: string;
   check_out: string;
   guests: number;
   total_price: number;
-  status: 'PENDING_APPROVAL' | 'PAYMENT_PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'REQUESTED' | string;
+  status: 'PENDING_APPROVAL' | 'PAYMENT_PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'REQUESTED' | 'STAYED' | string;
+  festival_tag: string;
 }
 
 interface HostProperty {
@@ -92,6 +95,7 @@ export default function HostDashboard() {
         id: String(b.id || 'BK-100'),
         traveler_name: b.guest?.full_name || b.guest?.email || 'Traveler Guest',
         traveler_phone: b.guest?.phone || 'Phone not provided',
+        traveler_city: b.guest?.home_city || 'Unknown',
         property_title: b.listing?.title || 'Heritage Stay',
         pol_name: b.listing?.pol_name || 'Old Ahmedabad',
         check_in: b.check_in,
@@ -99,6 +103,7 @@ export default function HostDashboard() {
         guests: b.guest_count || 1,
         total_price: Number(b.total_price) || 0,
         status: b.status?.toUpperCase() || 'REQUESTED',
+        festival_tag: b.festival_tag || 'none',
       }));
       setBookingRequests(formatted);
     } catch (err) {
@@ -208,33 +213,35 @@ export default function HostDashboard() {
     }
   };
 
-  const calculateMlSurgePrice = async (festival: string) => {
+  const calculateMlSurgePrice = async (festival: string, listing_id?: string) => {
     setIsMlLoading(true);
     try {
-      const res = await fetch('/api/v1/ml/suggest-price/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pol_name: 'Mandvi ni Pol',
-          room_type: 'entire_haveli',
-          max_guests: 4,
-          heritage_verified: true,
-          festival_tag: festival,
-          days_to_event: festival === 'uttarayan' ? 14 : festival === 'navratri' ? 30 : 60,
-        }),
-      });
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.suggested_price_per_night) {
-          setMlSuggestedPrice(Math.round(data.suggested_price_per_night));
+      // Pick the first property to use for ML suggestion, or pass listing_id if available
+      const targetListingId = listing_id || (properties.length > 0 ? properties[0].id : null);
+      
+      let targetDate = '2026-08-15'; // Default fallback
+      const year = 2026;
+      if (festival === 'uttarayan') targetDate = `${year}-01-14`;
+      else if (festival === 'navratri') targetDate = `${year}-10-10`;
+      else if (festival === 'diwali') targetDate = `${year}-11-08`;
+
+      if (targetListingId) {
+        const res = await axios.get(`http://127.0.0.1:8000/api/v1/listings/${targetListingId}/suggested-price/?date=${targetDate}`, { headers });
+        if (res.data && res.data.suggested_price) {
+           setMlSuggestedPrice(res.data.suggested_price);
+           return;
         }
-      } else {
-        const mult = festival === 'uttarayan' ? 2.2 : festival === 'navratri' ? 1.8 : festival === 'diwali' ? 1.6 : 1.0;
-        setMlSuggestedPrice(Math.round(1800 * mult));
       }
+
+      // Fallback if no listing or endpoint fails
+      const mult = festival === 'uttarayan' ? 1.45 : festival === 'navratri' ? 1.45 : festival === 'diwali' ? 1.45 : 1.0;
+      setMlSuggestedPrice(Math.round(1800 * mult));
     } catch {
-      const mult = festival === 'uttarayan' ? 2.2 : festival === 'navratri' ? 1.8 : festival === 'diwali' ? 1.6 : 1.0;
+      const mult = festival === 'uttarayan' ? 1.45 : festival === 'navratri' ? 1.45 : festival === 'diwali' ? 1.45 : 1.0;
       setMlSuggestedPrice(Math.round(1800 * mult));
     } finally {
       setIsMlLoading(false);
@@ -243,7 +250,7 @@ export default function HostDashboard() {
 
   useEffect(() => {
     calculateMlSurgePrice(selectedFestival);
-  }, [selectedFestival]);
+  }, [selectedFestival, properties]);
 
   if (showWizard) {
     return (
@@ -381,6 +388,16 @@ export default function HostDashboard() {
                         }`}>
                           {b.status}
                         </span>
+                        {b.festival_tag && b.festival_tag !== 'none' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 flex items-center gap-1">
+                            🎉 {b.festival_tag.charAt(0).toUpperCase() + b.festival_tag.slice(1)} Booking
+                          </span>
+                        )}
+                        {b.traveler_city && b.traveler_city !== 'Unknown' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-1">
+                            🌍 From {b.traveler_city}
+                          </span>
+                        )}
                       </div>
 
                       <h3 className="font-serif font-bold text-lg text-stone-900">
@@ -569,6 +586,68 @@ export default function HostDashboard() {
                   </div>
 
                   {isMlLoading && <Loader2 className="w-5 h-5 text-[#1E5A5B] animate-spin" />}
+                </div>
+              </div>
+              
+              {/* Plotly Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="p-4 rounded-2xl border border-stone-200/80 shadow-sm bg-white overflow-hidden">
+                  <h3 className="text-xs font-bold text-stone-800 mb-2">Monthly Revenue Trend</h3>
+                  <div className="w-full h-[250px] overflow-hidden -ml-2">
+                    <Plot
+                      data={[
+                        {
+                          x: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                          y: [85000, 60000, 45000, 42000, 38000, 40000, 55000, 72000, 65000, 110000, 125000, 95000],
+                          type: 'scatter',
+                          mode: 'lines+markers',
+                          marker: { color: '#B84A22', size: 8 },
+                          line: { color: '#B84A22', width: 3, shape: 'spline' }
+                        },
+                      ]}
+                      layout={{
+                        autosize: true,
+                        margin: { l: 40, r: 20, t: 20, b: 40 },
+                        paper_bgcolor: 'transparent',
+                        plot_bgcolor: 'transparent',
+                        xaxis: { showgrid: false },
+                        yaxis: { gridcolor: '#f0f0f0' },
+                      }}
+                      useResizeHandler={true}
+                      style={{ width: '100%', height: '100%' }}
+                      config={{ displayModeBar: false }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-stone-200/80 shadow-sm bg-white overflow-hidden">
+                  <h3 className="text-xs font-bold text-stone-800 mb-2">Traveler Origin Distribution</h3>
+                  <div className="w-full h-[250px] overflow-hidden">
+                    <Plot
+                      data={[
+                        {
+                          values: [35, 25, 20, 10, 10],
+                          labels: ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'International'],
+                          type: 'pie',
+                          hole: 0.5,
+                          marker: {
+                            colors: ['#1E5A5B', '#B84A22', '#D4AF37', '#6B7280', '#9CA3AF']
+                          },
+                          textinfo: 'label+percent',
+                          hoverinfo: 'label+value'
+                        },
+                      ]}
+                      layout={{
+                        autosize: true,
+                        margin: { l: 20, r: 20, t: 20, b: 20 },
+                        paper_bgcolor: 'transparent',
+                        showlegend: false
+                      }}
+                      useResizeHandler={true}
+                      style={{ width: '100%', height: '100%' }}
+                      config={{ displayModeBar: false }}
+                    />
+                  </div>
                 </div>
               </div>
 

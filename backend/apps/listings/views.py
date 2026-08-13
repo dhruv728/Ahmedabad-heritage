@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import PolSector, Listing
 from .serializers import PolSectorSerializer, ListingSerializer, ListingCreateSerializer
+from .ml_engine import SmartPricingEngine
+import datetime
 
 class PolSectorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PolSector.objects.all()  # type: ignore
@@ -68,3 +70,16 @@ class ListingViewSet(viewsets.ModelViewSet):
         listing.save()
         serializer = self.get_serializer(listing)
         return Response({"message": "Listing status set to pending re-verification", "listing": serializer.data}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def suggested_price(self, request, pk=None):
+        try:
+            target_date_str = request.query_params.get('date')
+            target_date = None
+            if target_date_str:
+                target_date = datetime.datetime.strptime(target_date_str, '%Y-%m-%d').date()
+                
+            suggested_price = SmartPricingEngine.suggest_price(listing_id=pk, target_date=target_date)
+            return Response({"suggested_price": suggested_price}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

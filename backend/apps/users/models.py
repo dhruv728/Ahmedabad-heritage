@@ -19,6 +19,7 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     profile_photo_url = models.URLField(max_length=500, null=True, blank=True)
+    home_city = models.CharField(max_length=100, null=True, blank=True)
     preferred_language = models.CharField(max_length=10, default='en')
     is_phone_verified = models.BooleanField(default=False)
     is_id_verified = models.BooleanField(default=False)

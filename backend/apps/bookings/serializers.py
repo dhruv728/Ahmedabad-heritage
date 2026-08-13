@@ -12,8 +12,15 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'listing', 'guest', 'check_in', 'check_out',
             'guest_count', 'total_price', 'status', 'festival_tag',
+            'purpose_of_visit', 'estimated_arrival_time',
             'created_at', 'updated_at'
         )
+
+class PriceCalculationSerializer(serializers.Serializer):
+    listing_id = serializers.UUIDField()
+    check_in = serializers.DateField()
+    check_out = serializers.DateField()
+    guest_count = serializers.IntegerField(default=1)
 
 class BookingCreateSerializer(serializers.Serializer):
     listing_id = serializers.UUIDField(required=False, allow_null=True)
@@ -23,6 +30,8 @@ class BookingCreateSerializer(serializers.Serializer):
     guest_count = serializers.IntegerField(default=1, required=False)
     guests_count = serializers.IntegerField(required=False, allow_null=True)
     festival_tag = serializers.ChoiceField(choices=Booking.FestivalTag.choices, default=Booking.FestivalTag.NONE)
+    purpose_of_visit = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    estimated_arrival_time = serializers.TimeField(required=False, allow_null=True)
 
     def validate(self, attrs):
         # Flexible resolution for listing_id from either listing_id or listing

@@ -1,4 +1,6 @@
-from datetime import timedelta
+import holidays
+from datetime import timedelta, date
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
@@ -8,7 +10,63 @@ from .models import Booking
 
 class BookingService:
     @staticmethod
-    def create_booking_request(guest, listing_id, check_in, check_out, guest_count=1, festival_tag='none'):
+    def calculate_dynamic_price(listing_id, check_in, check_out, guest_count=1):
+        if check_in >= check_out:
+            raise ValidationError("Check-out date must be after check-in date.")
+
+        listing = Listing.objects.get(id=listing_id)
+        
+        # Initialize holidays for Gujarat, India
+        gj_holidays = holidays.country_holidays('IN', subdiv='GJ')
+        # Add some custom Gujarat festivals if not present
+        gj_holidays[date(2026, 1, 14)] = 'Uttarayan'
+        gj_holidays[date(2025, 1, 14)] = 'Uttarayan'
+        gj_holidays[date(2026, 10, 10)] = 'Navratri' # approximate
+        gj_holidays[date(2026, 11, 8)] = 'Diwali' # approximate
+        
+        base_rate = float(listing.price_per_night)
+        total_days = (check_out - check_in).days
+        total_base = 0
+        festival_surge_total = 0
+        weekend_surge_total = 0
+        
+        detected_festival_name = None
+        
+        current_date = check_in
+        while current_date < check_out:
+            day_price = base_rate
+            total_base += day_price
+            
+            # Check for holidays
+            holiday_name = gj_holidays.get(current_date)
+            if holiday_name:
+                detected_festival_name = holiday_name
+                surge = day_price * 0.45 # 45% for major festivals
+                festival_surge_total += surge
+            # Check for weekend (5 = Saturday, 6 = Sunday)
+            elif current_date.weekday() >= 5:
+                surge = day_price * 0.15 # 15% for weekends
+                weekend_surge_total += surge
+                
+            current_date += timedelta(days=1)
+            
+        discount = 0
+        if total_days >= 3:
+            discount = (total_base + festival_surge_total + weekend_surge_total) * 0.10
+            
+        total_price = total_base + festival_surge_total + weekend_surge_total - discount
+        
+        return {
+            "base_rate": round(total_base, 2),
+            "festival_surge": round(festival_surge_total, 2),
+            "weekend_surge": round(weekend_surge_total, 2),
+            "discount": round(discount, 2),
+            "total": round(total_price, 2),
+            "detected_festival_name": detected_festival_name
+        }
+
+    @staticmethod
+    def create_booking_request(guest, listing_id, check_in, check_out, guest_count=1, festival_tag='none', purpose_of_visit=None, estimated_arrival_time=None):
         if check_in >= check_out:
             raise ValidationError("Check-out date must be after check-in date.")
 
@@ -69,6 +127,8 @@ class BookingService:
                 total_price=total_price,
                 status=Booking.Status.REQUESTED,
                 festival_tag=festival_tag,
+                purpose_of_visit=purpose_of_visit,
+                estimated_arrival_time=estimated_arrival_time,
             )
 
             # Initialize messaging thread for guest-host communication

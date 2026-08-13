@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Booking
-from .serializers import BookingSerializer, BookingCreateSerializer
+from .serializers import BookingSerializer, BookingCreateSerializer, PriceCalculationSerializer
 from .services import BookingService
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -35,6 +35,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                 check_out=data['check_out'],
                 guest_count=data.get('guest_count', 1),
                 festival_tag=data.get('festival_tag', 'none'),
+                purpose_of_visit=data.get('purpose_of_visit'),
+                estimated_arrival_time=data.get('estimated_arrival_time')
             )
             response_serializer = BookingSerializer(booking)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -69,6 +71,23 @@ class BookingViewSet(viewsets.ModelViewSet):
         bookings = Booking.objects.filter(listing__host=request.user).select_related('listing', 'guest')
         serializer = self.get_serializer(bookings, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='calculate-price')
+    def calculate_price(self, request):
+        serializer = PriceCalculationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        
+        try:
+            breakdown = BookingService.calculate_dynamic_price(
+                listing_id=data['listing_id'],
+                check_in=data['check_in'],
+                check_out=data['check_out'],
+                guest_count=data.get('guest_count', 1)
+            )
+            return Response(breakdown, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['patch', 'post'])
     def accept(self, request, pk=None):
